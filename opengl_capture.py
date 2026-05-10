@@ -13,7 +13,6 @@ Rama:  feat/opengl-input
 
 from __future__ import annotations
 
-import base64
 import io
 import logging
 from typing import TYPE_CHECKING
@@ -38,10 +37,13 @@ class CaptureError(Exception):
 # Función pública principal
 # ---------------------------------------------------------------------------
 
-def capture_opengl(surface: "pygame.Surface") -> str:
+def capture_opengl(surface: "pygame.Surface") -> bytes:
     """
     Captura un frame de una superficie pygame/OpenGL y devuelve
-    el PNG codificado en base64 como string.
+    los bytes PNG crudos.
+
+    El caller (ia.py → analizar()) es responsable de codificar
+    a base64 si la API lo requiere. Esto evita doble codificación.
 
     Parameters
     ----------
@@ -51,9 +53,8 @@ def capture_opengl(surface: "pygame.Surface") -> str:
 
     Returns
     -------
-    str
-        String base64 del PNG, listo para incluir en un payload JSON
-        o en el campo ``source.data`` de la API de Claude.
+    bytes
+        Bytes PNG crudos listos para ser procesados por analizar().
 
     Raises
     ------
@@ -64,8 +65,7 @@ def capture_opengl(surface: "pygame.Surface") -> str:
     _validate_surface(surface)
 
     try:
-        png_bytes = _surface_to_png_bytes(surface)
-        return _encode_base64(png_bytes)
+        return _surface_to_png_bytes(surface)
     except CaptureError:
         raise
     except Exception as exc:  # pragma: no cover — errores inesperados de pygame
@@ -122,8 +122,3 @@ def _surface_to_png_bytes(surface: "pygame.Surface") -> bytes:
         raise CaptureError("La conversión PNG produjo un buffer vacío.")
 
     return png_bytes
-
-
-def _encode_base64(data: bytes) -> str:
-    """Codifica bytes en base64 y devuelve un str limpio (sin saltos de línea)."""
-    return base64.b64encode(data).decode("ascii")
